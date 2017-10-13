@@ -72,29 +72,48 @@ class Forth extends ForthEvaluator {
 
   type Result = ForthErrorOr[ForthState]
   val startFunctions: Map[String, (Stack => ForthErrorOr[Stack])] = {
-    def push(i:Int)(s:Stack) = Right(i::s)
-    def existsHead(s:Stack) = s.length > 0
-    def existsSecond(s:Stack):Boolean = ???
+
 //    def scalaOp(f: (Int => Int => Int))(s:Stack): Either[ForthError, Stack] = s match {
 //      case _ :: Nil            => Left(ForthError.StackUnderflow)
 //      case x :: y :: _ => push(f(x)(y)) (s)
 //    } don't think this will work in scala bc of methods
 
     Map("+" -> {
-                case Nil            => {println("justnil") ; Left(ForthError.StackUnderflow)}
-                case _ :: Nil            => {println("_nil") ; Left(ForthError.StackUnderflow)}
-              case x :: y :: z => Right((x+y) :: z)
-              case _ =>  Left(ForthError.StackUnderflow)
+        case s:Stack if s.length < 2 =>       Left(ForthError.StackUnderflow)
+        case x :: y :: z => Right((x+y) :: z)
+        case _ =>  Left(ForthError.StackUnderflow)
             },
       "-" -> {
-        case Nil            => {println("justnil") ; Left(ForthError.StackUnderflow)}
-        case _ :: Nil            => {println("_nil") ; Left(ForthError.StackUnderflow)}
+        case s:Stack  if s.length < 2 =>       Left(ForthError.StackUnderflow)
         case x :: y :: z => Right((y-x) :: z)
         case _ =>  Left(ForthError.StackUnderflow)
       },
+      "/" -> {
+        case s:Stack  if s.length < 2 =>       Left(ForthError.StackUnderflow)
+        case x :: _ :: _  if x == 0 => Left(ForthError.DivisionByZero)
+        case x :: y :: z          => Right((y/x) :: z)
+        case _ =>  Left(ForthError.StackUnderflow)
+      },
+      "*" -> {
+        case s:Stack  if s.length < 2 =>       Left(ForthError.StackUnderflow)
+        case x :: y :: z          => Right((y/x) :: z)
+        case _ =>  Left(ForthError.StackUnderflow)
+      },
       "DUP" -> {
-        case Nil            => {println("justnil") ; Left(ForthError.StackUnderflow)}
+        case Nil            =>  Left(ForthError.StackUnderflow)
         case x :: y => Right(x :: x :: y)
+      },
+      "DROP" -> {
+        case Nil            =>  Left(ForthError.StackUnderflow)
+        case _ :: y => Right(y)
+      },
+      "SWAP" -> {
+        case s:Stack  if s.length < 2 =>       Left(ForthError.StackUnderflow)
+        case x :: y :: z => Right(y :: x :: z)
+      },
+      "OVER" -> {
+        case s:Stack  if s.length < 2 =>       Left(ForthError.StackUnderflow)
+        case x :: y :: _ => Right(y :: x :: y)
       }
     )
 
