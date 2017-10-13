@@ -37,6 +37,7 @@ trait ForthEvaluatorState {
 object Forth {
   def parse(in: String): List[Word] = {
     // regex help from github.com/daewon
+    val BeforeDefn = """(.*?)(?=:)(.*)""".r
     val tokens = """(-?\d+)|([\p{L}\p{Sc}\-]+)|(\s[-+*/])|^[-+*/]""".r
     val Defn = """(?s)\s*(:.+?;)(.*)""".r
     val Nmbr = """(\d+)""".r
@@ -44,12 +45,12 @@ object Forth {
     val BinOp = """([-+*/]{1})""".r
     val Symb = """[\p{L}\p{Sc}\-]+""".r
 
-    def parseToken(token: String): List[String] = token match {
-      case Defn(userDefined, after) => userDefined :: parseToken(after)
-      case cmd => tokens.findAllMatchIn(cmd).flatMap(_.subgroups).filterNot(_ == null).toList
-    }
+    def parseForTokens(token: String): List[String] = token match {
+      case Defn(userDefined, after) => userDefined :: parseForTokens(after)
+      case BeforeDefn(before, after) => parseForTokens(before) ++ parseForTokens(after) // in case Defns are not first
+      case seq => tokens.findAllMatchIn(seq).flatMap(_.subgroups).filterNot(_ == null).toList    }
 
-    val parsed = parseToken(in.toUpperCase)
+    val parsed = parseForTokens(in.toUpperCase)
 
     parsed.map(_.trim).map {
       case Defn(userDefined, _) =>
