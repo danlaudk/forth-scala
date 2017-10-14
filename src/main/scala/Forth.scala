@@ -1,6 +1,6 @@
 package forth
 import ForthError.ForthError
-import cats.Foldable
+import cats.{Eval, Foldable}
 import cats.data.State
 import cats.implicits._ // because cats built on 2.11 which didn't have Monad[Either]
 
@@ -126,11 +126,11 @@ class Forth extends ForthEvaluator {
   }
   def parse(text: String): List[Word] = Forth.parse(text) // in companion obj // TODO parse returns Either monad
 
-  def evalToState(words: Seq[Word]): State[Result, Result] =
+  def evalToState(words: Seq[Word]): State[Result, Eval[Result]] =
     if(words.length==0)
       for {
         r <- State.get[Result]
-      } yield r
+      } yield Eval.later(r)
     else {
       for {
         r <- State.get[Result]
@@ -147,8 +147,6 @@ class Forth extends ForthEvaluator {
   // fns used in wordtoState and in evalProgram
   type Map_Functions = Map[String, (Stack => ForthErrorOr[Stack])]
   def fnInMap(name: String)(r: Result): Option[Stack => ForthErrorOr[Stack]] = r.toOption.get.forthFunctions.get(name)
-  def stackMe(r: Result) = r.toOption.get.stack
-  def fnsMe(r: Result) = r.toOption.get.forthFunctions
 
   def callFunctionIntoResult(fn: Option[Stack => ForthErrorOr[Stack]])(r: Result): Result = {
     def oldStackToNewState(st: Stack) = Right(ForthState(st, r.toOption.get.forthFunctions))
@@ -163,7 +161,7 @@ class Forth extends ForthEvaluator {
       }
     }
   }// callfunctionintoresult
-  def updatedStackResultingFromFunction(currentFunctions: Map_Functions)(cmd: Seq[Word])(s:Stack): cats.Eval[ForthErrorOr[Stack]] =
-    evalToState(cmd).runS(Right(ForthState(s, currentFunctions))).map{case Right(ForthState(stack_of_functionResult, _)) => Right(stack_of_functionResult)}
+  def updatedStackResultingFromFunction(currentFunctions: Map_Functions)(cmd: Seq[Word])(s:Stack): Eval[ForthErrorOr[Stack]] =
+    evalToState(cmd).runS(Right(ForthState(s, currentFunctions))).map{_ match {case Right(ForthState(stack_of_functionResult, _)) => Right(stack_of_functionResult)}}
 
 }
