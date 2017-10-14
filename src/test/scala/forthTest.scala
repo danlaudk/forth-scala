@@ -1,5 +1,5 @@
-//package forthStateEval
-package forthFold
+
+package forth
 import org.scalatest.{Matchers, FunSuite}
 
 /** @version 1.2.0 */

@@ -1,10 +1,10 @@
-package forthFold
+package forth
 import ForthError.ForthError
 import cats.Foldable
 import cats.data.State
 import cats.implicits._ // because cats built on 2.11 which didn't have Monad[Either]
 
-package object forthFold {
+package object forth {
   type Program = List[Word]
   type Stack = List[Int]
   type ForthErrorOr[A] = Either[ForthError, A]
@@ -39,7 +39,7 @@ object Forth {
     // regex help from github.com/daewon
     val BeforeDefn = """(.*?)(?=:)(.*)""".r
     val tokens = """(-?\d+)|([\p{L}\p{Sc}\-]+)|(\s[-+*/])|^[-+*/]""".r
-    val Defn = """(?s)\s*(:.+?;)(.*)""".r
+    val Defn = """^(?s)\s*(:.+?;)(.*)""".r
     val Nmbr = """(\d+)""".r
     val FnSeq = """([\p{L}\p{Sc}\-]+)""".r
     val BinOp = """([-+*/]{1})""".r
@@ -62,12 +62,12 @@ object Forth {
       case FnSeq(cmd) => Func(cmd)
       case BinOp(op) => Func(op)
       case ex@_ => throw new RuntimeException(s"Unsupported Word: '${ex}'")
-    }.toList
+    }
   } // end def parse
 }
 
 class Forth extends ForthEvaluator {
-  import forthFold._
+  import forth._
   import Forth._
 
   type Result = ForthErrorOr[ForthState]
@@ -96,7 +96,7 @@ class Forth extends ForthEvaluator {
       },
       "*" -> {
         case s:Stack  if s.length < 2 =>       Left(ForthError.StackUnderflow)
-        case x :: y :: z          => Right((y/x) :: z)
+        case x :: y :: z          => Right((y*x) :: z)
         case _ =>  Left(ForthError.StackUnderflow)
       },
       "DUP" -> {
@@ -113,52 +113,57 @@ class Forth extends ForthEvaluator {
       },
       "OVER" -> {
         case s:Stack  if s.length < 2 =>       Left(ForthError.StackUnderflow)
-        case x :: y :: _ => Right(y :: x :: y)
+        case x :: y :: z => Right(y :: x :: y :: z)
       }
     )
 
   }
   val startState = new ForthState(List(), startFunctions)
 
-  def eval(text: String): Either[ForthError, ForthEvaluatorState] = // two-steps
-    evalParsed(parse(text), startState)
-
-    // for{ parsed <- parse(text) yield evalParsed
+  def eval(text: String): Either[ForthError, ForthEvaluatorState] = {
+    // two-steps without statemonad. 3-steps with. evalStateActions(parse(text) map wordToState, Right(startState)) // originally a 2-step version
+    evalToState(parse(text)).runS(Right(startState)).value
+  }
   def parse(text: String): List[Word] = Forth.parse(text) // in companion obj // TODO parse returns Either monad
 
-  def evalWord(state: ForthState, w: Word): Result = {
-    def callFunction(name: String, state: ForthState): Result = {
-      def oldStackToNewState(st: Stack) = Right(ForthState(st, state.forthFunctions))
-      state.forthFunctions.get(name) match {
-        case None => Left(ForthError.UnknownWord) // wish print the unknownword here
-        case Some(f) => f(state.stack).flatMap(oldStackToNewState)
-      }
+  def evalToState(words: Seq[Word]): State[Result, Result] =
+    if(words.length==0)
+      for {
+        r <- State.get[Result]
+      } yield r
+    else {
+      for {
+        r <- State.get[Result]
+        (stk, fns) = r match { case Right(ForthState(stk, fns)) => (stk, fns) }
+        _ <- words.head match {
+          case Func(name) => State.set[Result](callFunctionIntoResult(fnInMap(name)(r))(r))
+          case Number(n) => State.set[Result](Right(ForthState(n :: stk, fns)))
+          case Definition(name, cmd) => State.set[Result](Right(ForthState(stk, fns.updated(name, updatedStackResultingFromFunction(fns)(cmd)(_).value))))
+        }
+        res <- evalToState(words.tail)
+      } yield res
     }
 
-    // now use callFunction
-    val stk = state.stack
-    val fns = state.forthFunctions
-    w match {
-      case Func(name) => callFunction(name, state)
-      case Number(n) => Right(ForthState(n :: stk, fns))
-      case Definition(name, cmd) => {
-        def updatedStackResultingFromFunction(s:Stack): ForthErrorOr[Stack] = evalParsed(cmd.toList, ForthState(s, fns)).map {
-          case ForthState(stack_of_functionResult, _) => stack_of_functionResult // map case in order to unwrap Either
+  // fns used in wordtoState and in evalProgram
+  type Map_Functions = Map[String, (Stack => ForthErrorOr[Stack])]
+  def fnInMap(name: String)(r: Result): Option[Stack => ForthErrorOr[Stack]] = r.toOption.get.forthFunctions.get(name)
+  def stackMe(r: Result) = r.toOption.get.stack
+  def fnsMe(r: Result) = r.toOption.get.forthFunctions
+
+  def callFunctionIntoResult(fn: Option[Stack => ForthErrorOr[Stack]])(r: Result): Result = {
+    def oldStackToNewState(st: Stack) = Right(ForthState(st, r.toOption.get.forthFunctions))
+
+    fn match {
+      case None => Left(ForthError.UnknownWord)
+      case Some(f) => {
+        r match {
+          case Right(state) => f(state.stack).flatMap(oldStackToNewState)
+          case Left(x) => Left(x)
         }
-        Right(ForthState(stk, state.forthFunctions.updated(name, updatedStackResultingFromFunction )))
-//        def oldFnsToNewState(st: Stack) = Right(ForthState(stk, state.forthFunctions.updated(name, updatedStackResultingFromFunction )))
-//
-//        updatedStackResultingFromFunction.flatMap(oldStackToNewState)
-
-      } // end case Definition()
-
-
-    } //end match
-  } // end evalword
-
-
-  def evalParsed(words: List[Word], state: ForthState): Result = {
-    cats.Foldable[List].foldLeftM(words, startState)(evalWord) // need cats monadic foldleft for the wrap it in a monad because i want it to actually operate, not just use the monoid instance (not sure what that is anyway)
-  }
+      }
+    }
+  }// callfunctionintoresult
+  def updatedStackResultingFromFunction(currentFunctions: Map_Functions)(cmd: Seq[Word])(s:Stack): cats.Eval[ForthErrorOr[Stack]] =
+    evalToState(cmd).runS(Right(ForthState(s, currentFunctions))).map{case Right(ForthState(stack_of_functionResult, _)) => Right(stack_of_functionResult)}
 
 }
