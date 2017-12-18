@@ -83,6 +83,7 @@ if ("onhashchange" in window) {
 }
 </script>
 
+
 <div class="live norun" id="ex1" data-mode="text/x-scala">
 @ import $ivy.`org.typelevel::cats-core:0.9.0`, cats.{Eval, Foldable}, cats.implicits._, cats.data.State
 
@@ -306,6 +307,7 @@ cat $1 >legacy.sc
 ### RUN
 #ls -alh /code/
 curl -L -o /tmp/amm https://git.io/vdNv2 &&  chmod +x /tmp/amm &&  /tmp/amm legacy.sc
+
 </div>
 
 {% endblock %}
