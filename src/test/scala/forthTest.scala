@@ -25,7 +25,7 @@ class ForthTest extends FunSuite with Matchers {
   test("addition - errors if there is nothing on the stack") {
 
     println(forth.eval(" +").fold(_ => "lkjh", _.toString + "asdf"))
-    forth.eval("+").isLeft should be (true)
+    forth.eval("+").isLeft should be (true)  // fails!!
   }
 
   test("addition - errors if there is only one value on the stack") {

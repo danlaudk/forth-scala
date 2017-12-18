@@ -69,9 +69,8 @@ object Forth {
 class Forth extends ForthEvaluator {
   import forth._
   import Forth._
-
   type Result = ForthErrorOr[ForthState]
-  val startFunctions: Map[String, (Stack => ForthErrorOr[Stack])] = {
+  val startFunctions: Map[String, (Stack => Either[ForthError,Stack])] = {
 
 //    def scalaOp(f: (Int => Int => Int))(s:Stack): Either[ForthError, Stack] = s match {
 //      case _ :: Nil            => Left(ForthError.StackUnderflow)
@@ -145,23 +144,23 @@ class Forth extends ForthEvaluator {
     }
 
   // fns used in wordtoState and in evalProgram
-  type Map_Functions = Map[String, (Stack => ForthErrorOr[Stack])]
-  def fnInMap(name: String)(r: Result): Option[Stack => ForthErrorOr[Stack]] = r.toOption.get.forthFunctions.get(name)
+  type Map_Functions = Map[String, (Stack => Either[ForthError,Stack])]
+  def fnInMap(name: String)(r: Result): Option[Stack => Either[ForthError,Stack]] = r.toOption.get.forthFunctions.get(name)
 
-  def callFunctionIntoResult(fn: Option[Stack => ForthErrorOr[Stack]])(r: Result): Result = {
+  def callFunctionIntoResult(fn: Option[Stack => Either[ForthError,Stack]])(r: Result): Result = {
     def oldStackToNewState(st: Stack) = Right(ForthState(st, r.toOption.get.forthFunctions))
 
     fn match {
       case None => Left(ForthError.UnknownWord)
       case Some(f) => {
         r match {
-          case Right(state) => f(state.stack).flatMap(oldStackToNewState)
+          case Right(state) => f(state.stack).flatMap(oldStackToNewState _)
           case Left(x) => Left(x)
         }
       }
     }
   }// callfunctionintoresult
-  def updatedStackResultingFromFunction(currentFunctions: Map_Functions)(cmd: Seq[Word])(s:Stack): Eval[ForthErrorOr[Stack]] =
+  def updatedStackResultingFromFunction(currentFunctions: Map_Functions)(cmd: Seq[Word])(s:Stack): Eval[Either[ForthError,Stack]] =
     evalToState(cmd).runS(Right(ForthState(s, currentFunctions))).map{_ match {case Right(ForthState(stack_of_functionResult, _)) => Right(stack_of_functionResult)}}
 
 }
