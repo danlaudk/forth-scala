@@ -8,10 +8,10 @@
 <p>
 A Scala compiler for the  <a href="https://www.forth.com/resources/forth-programming-language/#12_Philosophy_and_Goals"><code>Forth language</code></a>, a stack-based language that has been used by NASA in spacecraft(<a href="https://en.wikipedia.org/wiki/Forth_(programming_language)#cite_ref-2"><i class="fa fa-link"></i></a>).
 </p>
-
 <p>  My original intent was to keep this close in design to assembler code I pair-programmed with at Recurse, but then I veered off, using it as an excuse to investigate : rolling my own state monad, using cats library, and even exploring the use of a free monad/interpreter pattern (but I couldn't work out how to compose State with Either)
-
-Code was pulled out of classes to fit on .sc worksheet. It initiates a download of cats library each time you press run (bc on ammonite, only in order to run on this io.livecode website) </p>
+</p>
+<p> Pressing run initiates a download of cats library each time you press run, and may display an ammonite error temporarily (for up to 30seconds) .  Code was pulled out of classes to fit on below .sc worksheet (bc on ammonite, only in order to run on this io.livecode website)
+</p>
 
 <div class="live norun" id="ex1" data-mode="text/x-scala">
 @ import $ivy.`org.typelevel::cats-core:0.9.0`, cats.{Eval, Foldable}, cats.implicits._, cats.data.State
@@ -37,13 +37,10 @@ import ForthError.ForthErrorType
     override def toString: String = stack.reverse.mkString(" ")
   }
 
-
-
 sealed trait Word
 case class Definition(name: String, cmd: Seq[Word]) extends Word
 case class Number(value: Int) extends Word
 case class Func(cmd: String) extends Word
-
 
 trait ForthEvaluator  {
   def eval(text: String): Either[ForthError.ForthErrorType, ForthEvaluatorState]
@@ -202,7 +199,7 @@ trait ForthEvaluatorState {
 val out =  for {
     s &lt;- strings
     evaled = eval(s)
-    output = s + " ;leaves on stack: " + evaled.right.toOption.map(_.toString).getOrElse(evaled.left.get)
+    output = s + " ;           leaves on stack: " + evaled.right.toOption.map(_.toString).getOrElse(evaled.left.get)
   } yield output
 
 out.foreach(println(_))
@@ -226,7 +223,7 @@ scala -version
 cat $1 >forth.scala
 
 ### download and RUN
-curl -L -o /tmp/amm https://git.io/vdNv2 &&  chmod +x /tmp/amm &&  /tmp/amm forth.sc
+curl -L -o /tmp/amm https://git.io/vdNvV &&  chmod +x /tmp/amm &&  /tmp/amm forth.scala
 </div>
 
 {% endblock %}
