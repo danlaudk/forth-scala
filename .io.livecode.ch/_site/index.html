@@ -1,88 +1,17 @@
-
 {% extends "base_livecode.html" %}
 
-{% block title %}The Unsound Playground{% endblock %}
+{% block title %}Compiler written in Scala{% endblock %}
 
 {% block content %}
 
-<div style="float:right;margin-left:1em">
-<a href="https://raw.githubusercontent.com/namin/unsound/master/doc/unsound-oopsla16.pdf"><img style="border: 2px solid black" src="http://raw.githubusercontent.com/namin/unsound/master/doc/unsound-oopsla16.png"></img></a>
-<figcaption style="text-align:center">OOPSLA '16<hr/>Distinguished<br/>Artifact Award</figcaption>
-</div>
 
 <p>
-We, <a href="http://namin.net/">Nada Amin</a> and <a href="http://www.cs.cornell.edu/~ross/">Ross Tate</a>, broke the Java and Scala type systems!</br>
-Try it out for yourself by running the examples, which throw cast exceptions even though they contain no casts &darr;</br>
-Read our paper <cite>Java and Scala's Type Systems are Unsound</cite> to learn how these examples work &rarr;</br>
-Come up with your own examples and use the save icon to update the URL to a permalink to your code &#8625;
+A Scala compiler for the  <a href="https://www.forth.com/resources/forth-programming-language/#12_Philosophy_and_Goals"><code>Forth language</code></a>, a stack-based language that has been used by NASA in spacecraft(<a href="https://en.wikipedia.org/wiki/Forth_(programming_language)#cite_ref-2"><i class="fa fa-link"></i></a>).
 </p>
 
-<p><b><font size="4">Which language would you like to break?</font></b><br/>
-<a style="color:grey" href="../unsound">Java</a> / <font color="red">Scala</font></p>
+<p>  My original intent was to keep this close in design to assembler code I pair-programmed with at Recurse, but then I veered off, using it as an excuse to investigate : rolling my own state monad, using cats library, and even exploring the use of a free monad/interpreter pattern (but I couldn't work out how to compose State with Either)
 
-<ul style="list-style-type: none; margin-left: -1.5em">
-<li><a id="e0" href="#481090e4e07116a253ec6c5b1a56548f">unsoundMini.scala in Scala 2.11.8</a></li>
-<li><a id="e1" href="#7977dfe65b3e74cc36e55a34efec0e48">unsound.scala in Scala 2.11.8</a></li>
-<li><a id="e3" href="#82c3c86f0284d56b35ac003633fee396">legacy.scala in Scala 2.9.3</a> (the first program we broke Scala with)</li>
-<li><a id="e4" href="#5db183c7a325ced6e8d9a7905e647907">nullless.scala in Scala 2.11.8</a> (this program has no occurence of <tt>null</tt>, courtesy of <a href="https://d-d.me/">Dmitry Petrashko</a>)</li>
-<li><a id="e5" href="#e3bee1eaee9de1ffdd604c6582708681">unsoundStatic.scala in Scala 2.11.8</a> (this program has no occurence of <tt>null</tt>, courtesy of <a href="https://d-d.me/">Dmitry Petrashko</a>)</li>
-</ul>
-
-<script type="text/javascript">
-function rehash() {
- for (var i=0; i<=5; i++) {
-  var link = document.getElementById("e" + i);
-  link.style.color = "grey";
-  link.style["text-decoration"] = "underline";
- }
- var hash = window.location.hash;
- var index = hash.indexOf("#");
- if (index < 0) {
-  last = document.getElementById("e0");
-  last.style.color = "red";
-  last.style["text-decoration"] = "none";
- } else {
-  hash = hash.substring(index);
-  for (var i=0; i<=5; i++) {
-   var link = document.getElementById("e" + i);
-   var href = link.href;
-   href = href.substring(href.indexOf("#"));
-   if (href == hash) {
-    last = link;
-    last.style.color = "red";
-    last.style["text-decoration"] = "none";
-   }
-  }
- }
-}
-rehash();
-if ("onhashchange" in window) {
- window.onhashchange = rehash;
-} else {
- var last = null;
- function paintlinks() {
-  if (last) {
-   last.style.color = "grey";
-   last.style["text-decoration"] = "underline";
-  }
-  last = this;
-  last.style.color = "red";
-  last.style["text-decoration"] = "none";
- }
- for (var i=0; i<=5; i++) {
-  var link = document.getElementById("e" + i);
-  link.style.color = "grey";
-  if (link.addEventListener) {
-   link.addEventListener("click",paintlinks,false);
-  } else if (link.attachEvent) {
-   link.attachEvent("onclick",paintlinks);
-  } else {
-   link.onclick=rememberLink;
-  }
- }
-}
-</script>
-
+Code was pulled out of classes to fit on .sc worksheet. It initiates a download of cats library each time you press run (bc on ammonite, only in order to run on this io.livecode website) </p>
 
 <div class="live norun" id="ex1" data-mode="text/x-scala">
 @ import $ivy.`org.typelevel::cats-core:0.9.0`, cats.{Eval, Foldable}, cats.implicits._, cats.data.State
@@ -123,7 +52,6 @@ trait ForthEvaluatorState {
   override def toString: String
 }
   def parse(in: String): List[Word] = {
-    // regex help from github.com/daewon
     val BeforeDefn = """(.*?)(?=:)(.*)""".r
     val tokens = """(-?\d+)|([\p{L}\p{Sc}\-]+)|(\s[-+*/])|^[-+*/]""".r
     val Defn = """^(?s)\s*(:.+?;)(.*)""".r
@@ -152,16 +80,7 @@ trait ForthEvaluatorState {
     }
   } // end def parse
 
-
-
-
   val startFunctions: Map[String, (Stack => Either[ForthErrorType,Stack])] = {
-
-    //    def scalaOp(f: (Int => Int => Int))(s:Stack): Either[ForthErrorType, Stack] = s match {
-    //      case _ :: Nil            => Left(ForthError.StackUnderflow)
-    //      case x :: y :: _ => push(f(x)(y)) (s)
-    //    } don't think this will work in scala bc of methods
-
     Map(
       "+" -> {
       case s: Stack if s.length &lt; 2 => Left(ForthError.StackUnderflow)
@@ -201,8 +120,12 @@ trait ForthEvaluatorState {
         case x :: y :: z => Right(y :: x :: y :: z)
       }
     )
-
+    //    def scalaOp(f: (Int => Int => Int))(s:Stack): Either[ForthErrorType, Stack] = s match {
+    //      case _ :: Nil            => Left(ForthError.StackUnderflow)
+    //      case x :: y :: _ => push(f(x)(y)) (s)
+    //    } don't think this will work in scala bc of methods
   }
+  
   val startState = new ForthState(List(), startFunctions)
 
   def eval(text: String): Either[ForthErrorType, ForthEvaluatorState] = {
@@ -210,7 +133,7 @@ trait ForthEvaluatorState {
     evalToState(parse1(text)).runS(Right(startState)).value
   }
 
-  def parse1(text: String): List[Word] = parse(text) // in companion obj // TODO parse returns Either monad
+  def parse1(text: String): List[Word] = parse(text) // naming: parse originally in companion obj // TODO parse returns Either monad
 
   def evalToState(words: Seq[Word]): State[Result, Eval[Result]] =
     if (words.length == 0)
@@ -251,8 +174,7 @@ trait ForthEvaluatorState {
     }
   }
 
-
-  // callfunctionintoresult
+  // a function call updates a stack
   def updatedStackResultingFromFunction(currentFunctions: Map_Functions)(cmd: Seq[Word])(s: Stack): Eval[Either[ForthErrorType,Stack]] =
     evalToState(cmd).runS(Right(ForthState(s, currentFunctions))).map {
       _ match {
@@ -270,11 +192,11 @@ trait ForthEvaluatorState {
     "12 5 - 4 -",
     "2 4 *",
     "3 4 -",
-    ": countup 1 2 3 ; countup",
-    ": dup-twice DUP DUP ; 1 dup-twice",
-    ": foo dup ; : foo dup dup ; 1 foo",
+    ": countup 1 2 3 ; countup", // defines and runs a fn to place 1 2 3 on stack
+    ": dup-twice DUP DUP ; 1 dup-twice", 
+    ": foo dup ; : foo dup dup ; 1 foo", // redefines a function foo
     ": square dup * ;  10 square"
-    ,"dup"
+    ,"dup" // errors as nothing on the stack
   )
 
 val out =  for {
@@ -291,23 +213,20 @@ out.foreach(println(_))
 set -e -v
 
 ### PICK VERSION
-export JAVA_HOME=/usr/lib/jvm/java-8-oracle
+export JAVA_HOME=/usr/lib/jvm/java-7-oracle
 export PATH=$JAVA_HOME/bin:$PATH
 export SCALA_HOME=/code/scala-2.11.8
 export PATH=$SCALA_HOME/bin:$PATH
 
 ### CHECK VERSION
 java -version
-scala -version // hangs...
+scala -version
 
 ### COMPILE
-cat $1 >legacy.sc
-##scalac legacy.scala
+cat $1 >forth.scala
 
-### RUN
-#ls -alh /code/
-curl -L -o /tmp/amm https://git.io/vdNv2 &&  chmod +x /tmp/amm &&  /tmp/amm legacy.sc
-
+### download and RUN
+curl -L -o /tmp/amm https://git.io/vdNv2 &&  chmod +x /tmp/amm &&  /tmp/amm forth.sc
 </div>
 
 {% endblock %}
